@@ -51,6 +51,10 @@
   #include <pthread.h>
 #endif
 
+#ifdef _KERNEL_MODE
+#include "Common/KSupport.h"
+#endif
+
 // Build Options
 // =============
 
