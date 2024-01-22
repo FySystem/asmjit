@@ -143,7 +143,7 @@ enum class MemoryFlags : uint32_t {
 
   //! Request large memory mapped pages.
   //!
-  //! \important If this option is used and large page(s) cannot be mapped, the allocation will fail. Fallback to
+  //! \remarks If this option is used and large page(s) cannot be mapped, the allocation will fail. Fallback to
   //! regular pages must be done by the user in this case. Higher level API such as \ref JitAllocator provides an
   //! additional mechanism to allocate regular page(s) when large page(s) allocation fails.
   kMMapLargePages = 0x00000200u,
@@ -215,8 +215,11 @@ enum class HardenedRuntimeFlags : uint32_t {
   //! architecture.
   kEnabled = 0x00000001u,
 
-  //! Read+Write+Execute can only be allocated with MAP_JIT flag (Apple specific, only available on OSX).
-  kMapJit = 0x00000002u
+  //! Read+Write+Execute can only be allocated with MAP_JIT flag (Apple specific, only available on Apple platforms).
+  kMapJit = 0x00000002u,
+
+  //! Read+Write+Executa can be allocated with dual mapping approach (one region with RW and the other with RX).
+  kDualMapping = 0x00000004u
 };
 ASMJIT_DEFINE_ENUM_FLAGS(HardenedRuntimeFlags)
 
@@ -275,7 +278,7 @@ public:
 
   //! \}
 
-  //! \name Construction / Destruction
+  //! \name Construction & Destruction
   //! \{
 
   //! Makes the given memory block RW protected.

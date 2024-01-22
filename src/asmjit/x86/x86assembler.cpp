@@ -529,8 +529,6 @@ static ASMJIT_FORCE_INLINE bool x86ShouldUseMovabs(Assembler* self, X86BufferWri
 Assembler::Assembler(CodeHolder* code) noexcept : BaseAssembler() {
   _archMask = (uint64_t(1) << uint32_t(Arch::kX86)) |
               (uint64_t(1) << uint32_t(Arch::kX64)) ;
-  assignEmitterFuncs(this);
-
   if (code)
     code->attach(this);
 }
@@ -560,7 +558,7 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
 
   const Operand_* rmRel;           // Memory operand or operand that holds Label|Imm.
   uint32_t rmInfo;                 // Memory operand's info based on x86MemInfo.
-  uint32_t rbReg;                  // Memory base or modRM register.
+  uint32_t rbReg = 0;              // Memory base or modRM register.
   uint32_t rxReg;                  // Memory index register.
   uint32_t opReg;                  // ModR/M opcode or register id.
 
@@ -610,7 +608,7 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
       Operand_ opArray[Globals::kMaxOpCount];
       EmitterUtils::opArrayFromEmitArgs(opArray, o0, o1, o2, opExt);
 
-      err = _funcs.validate(arch(), BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
+      err = _funcs.validate(BaseInst(instId, options, _extraReg), opArray, Globals::kMaxOpCount, ValidationFlags::kNone);
       if (ASMJIT_UNLIKELY(err))
         goto Failed;
     }
@@ -653,7 +651,6 @@ ASMJIT_FAVOR_SPEED Error Assembler::_emit(InstId instId, const Operand_& o0, con
   // This sequence seems to be the fastest.
   opcode = InstDB::_mainOpcodeTable[instInfo->_mainOpcodeIndex];
   opReg = opcode.extractModO();
-  rbReg = 0;
   opcode |= instInfo->_mainOpcodeValue;
 
   // Encoding Scope
@@ -991,13 +988,13 @@ CaseX86M_GPB_MulDiv:
           goto EmitX86R;
 
         // MOD/RM: Alternative encoding selected via instruction options.
-        opcode += 2;
+        opcode += 2u;
         std::swap(opReg, rbReg);
         goto EmitX86R;
       }
 
       if (isign3 == ENC_OPS2(Reg, Mem)) {
-        opcode += 2;
+        opcode += 2u;
         opcode.addArithBySize(o0.x86RmSize());
 
         opReg = o0.id();
@@ -1075,7 +1072,7 @@ CaseX86M_GPB_MulDiv:
           goto EmitX86Op;
         }
 
-        opcode += size != 1 ? (immSize != 1 ? 1 : 3) : 0;
+        opcode += size != 1 ? (immSize != 1 ? 1u : 3u) : 0u;
         goto EmitX86R;
       }
 
@@ -1095,7 +1092,7 @@ CaseX86M_GPB_MulDiv:
         if (Support::isInt8(immValue) && !Support::test(options, InstOptions::kLongForm))
           immSize = 1;
 
-        opcode += memSize != 1 ? (immSize != 1 ? 1 : 3) : 0;
+        opcode += memSize != 1 ? (immSize != 1 ? 1u : 3u) : 0u;
         opcode.addPrefixBySize(memSize);
 
         rmRel = &o0;
@@ -1251,7 +1248,7 @@ CaseX86M_GPB_MulDiv:
         // This seems to be the only exception of encoding '66F2' prefix.
         if (o1.x86RmSize() == 2) writer.emit8(0x66);
 
-        opcode += o1.x86RmSize() != 1;
+        opcode += uint32_t(o1.x86RmSize() != 1u);
         goto EmitX86M;
       }
       break;
@@ -1379,7 +1376,7 @@ CaseX86M_GPB_MulDiv:
         if (ASMJIT_UNLIKELY(o0.id() != Gp::kIdAx || o1.id() != Gp::kIdDx))
           goto InvalidInstruction;
 
-        opcode += o0.x86RmSize() != 1;
+        opcode += uint32_t(o0.x86RmSize() != 1u);
         opcode.add66hBySize(o0.x86RmSize());
         goto EmitX86Op;
       }
@@ -1395,7 +1392,7 @@ CaseX86M_GPB_MulDiv:
           goto AmbiguousOperandSize;
 
         rmRel = &o0;
-        opcode += (size != 1);
+        opcode += uint32_t(size != 1u);
 
         opcode.add66hBySize(size);
         goto EmitX86OpImplicitMem;
@@ -1552,7 +1549,7 @@ CaseX86M_GPB_MulDiv:
               if (!Support::test(options, InstOptions::kX86_ModRM))
                 goto EmitX86R;
 
-              opcode += 2;
+              opcode += 2u;
               std::swap(opReg, rbReg);
               goto EmitX86R;
             }
@@ -1563,7 +1560,7 @@ CaseX86M_GPB_MulDiv:
               if (!Support::test(options, InstOptions::kX86_ModRM))
                 goto EmitX86R;
 
-              opcode += 2;
+              opcode += 2u;
               std::swap(opReg, rbReg);
               goto EmitX86R;
             }
@@ -1652,7 +1649,7 @@ CaseX86M_GPB_MulDiv:
           // Handle a special form of `mov al|ax|eax|rax, [ptr64]` that doesn't use MOD.
           if (opReg == Gp::kIdAx && !rmRel->as<Mem>().hasBaseOrIndex()) {
             if (x86ShouldUseMovabs(this, writer, o0.x86RmSize(), options, rmRel->as<Mem>())) {
-              opcode += 0xA0;
+              opcode += 0xA0u;
               immValue = rmRel->as<Mem>().offset();
               goto EmitX86OpMovAbs;
             }
@@ -1661,7 +1658,7 @@ CaseX86M_GPB_MulDiv:
           if (o0.x86RmSize() == 1)
             FIXUP_GPB(o0, opReg);
 
-          opcode += 0x8A;
+          opcode += 0x8Au;
           goto EmitX86M;
         }
       }
@@ -1685,7 +1682,7 @@ CaseX86M_GPB_MulDiv:
           // Handle a special form of `mov [ptr64], al|ax|eax|rax` that doesn't use MOD.
           if (opReg == Gp::kIdAx && !rmRel->as<Mem>().hasBaseOrIndex()) {
             if (x86ShouldUseMovabs(this, writer, o1.x86RmSize(), options, rmRel->as<Mem>())) {
-              opcode += 0xA2;
+              opcode += 0xA2u;
               immValue = rmRel->as<Mem>().offset();
               goto EmitX86OpMovAbs;
             }
@@ -1694,7 +1691,7 @@ CaseX86M_GPB_MulDiv:
           if (o1.x86RmSize() == 1)
             FIXUP_GPB(o1, opReg);
 
-          opcode += 0x88;
+          opcode += 0x88u;
           goto EmitX86M;
         }
       }
@@ -1995,7 +1992,7 @@ CaseX86PushPop_Gp:
           if (ASMJIT_UNLIKELY(o1.id() != Gp::kIdCx))
             goto InvalidInstruction;
 
-          opcode += 2;
+          opcode += 2u;
           goto EmitX86R;
         }
 
@@ -2020,7 +2017,7 @@ CaseX86PushPop_Gp:
           if (ASMJIT_UNLIKELY(o1.id() != Gp::kIdCx))
             goto InvalidInstruction;
 
-          opcode += 2;
+          opcode += 2u;
           rmRel = &o0;
           goto EmitX86M;
         }
@@ -2390,7 +2387,7 @@ CaseFpuArith_Mem:
         }
 
         if (o0.x86RmSize() == 8 && commonInfo->hasFlag(InstDB::InstFlags::kFpuM64)) {
-          opcode += 4;
+          opcode += 4u;
           goto EmitX86M;
         }
 
@@ -2415,7 +2412,7 @@ CaseFpuArith_Mem:
 
         rmRel = &o0;
         if (o0.x86RmSize() == 2 && commonInfo->hasFlag(InstDB::InstFlags::kFpuM16)) {
-          opcode += 4;
+          opcode += 4u;
           goto EmitX86M;
         }
 
@@ -2433,7 +2430,7 @@ CaseFpuArith_Mem:
 
     case InstDB::kEncodingFpuRDef:
       if (isign3 == 0) {
-        opcode += 1;
+        opcode += 1u;
         goto EmitFpuOp;
       }
       ASMJIT_FALLTHROUGH;
@@ -2621,7 +2618,7 @@ CaseExtMovd:
           if (!Support::test(options, InstOptions::kX86_ModMR))
             goto EmitX86R;
 
-          opcode += 0x10;
+          opcode += 0x10u;
           std::swap(opReg, rbReg);
           goto EmitX86R;
         }
@@ -5088,6 +5085,9 @@ Error Assembler::align(AlignMode alignMode, uint32_t alignment) {
 Error Assembler::onAttach(CodeHolder* code) noexcept {
   Arch arch = code->arch();
   ASMJIT_PROPAGATE(Base::onAttach(code));
+
+  _instructionAlignment = uint8_t(1);
+  assignEmitterFuncs(this);
 
   if (Environment::is32Bit(arch)) {
     // 32 bit architecture - X86.

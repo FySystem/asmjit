@@ -366,21 +366,18 @@ Error BaseRAPass::initSharedAssignments(const ZoneVector<uint32_t>& sharedAssign
 
 class RABlockVisitItem {
 public:
+  RABlock* _block {};
+  uint32_t _index {};
+
   inline RABlockVisitItem(RABlock* block, uint32_t index) noexcept
     : _block(block),
       _index(index) {}
 
-  inline RABlockVisitItem(const RABlockVisitItem& other) noexcept
-    : _block(other._block),
-      _index(other._index) {}
-
+  inline RABlockVisitItem(const RABlockVisitItem& other) noexcept = default;
   inline RABlockVisitItem& operator=(const RABlockVisitItem& other) noexcept = default;
 
   inline RABlock* block() const noexcept { return _block; }
   inline uint32_t index() const noexcept { return _index; }
-
-  RABlock* _block;
-  uint32_t _index;
 };
 
 Error BaseRAPass::buildCFGViews() noexcept {
@@ -479,11 +476,17 @@ Error BaseRAPass::buildCFGDominators() noexcept {
   entryBlock->setIDom(entryBlock);
 
   bool changed = true;
-  uint32_t nIters = 0;
+
+#ifndef ASMJIT_NO_LOGGING
+  uint32_t numIters = 0;
+#endif
 
   while (changed) {
-    nIters++;
     changed = false;
+
+#ifndef ASMJIT_NO_LOGGING
+    numIters++;
+#endif
 
     uint32_t i = _pov.size();
     while (i) {
@@ -511,7 +514,7 @@ Error BaseRAPass::buildCFGDominators() noexcept {
     }
   }
 
-  ASMJIT_RA_LOG_FORMAT("  Done (%u iterations)\n", nIters);
+  ASMJIT_RA_LOG_FORMAT("  Done (%u iterations)\n", numIters);
   return kErrorOk;
 }
 
@@ -801,7 +804,6 @@ ASMJIT_FAVOR_SPEED Error BaseRAPass::buildLiveness() noexcept {
   uint32_t numAllBlocks = blockCount();
   uint32_t numReachableBlocks = reachableBlockCount();
 
-  uint32_t numVisits = numReachableBlocks;
   uint32_t numWorkRegs = workRegCount();
   uint32_t numBitWords = ZoneBitVector::_wordsPerBits(numWorkRegs);
 
@@ -891,6 +893,10 @@ ASMJIT_FAVOR_SPEED Error BaseRAPass::buildLiveness() noexcept {
   // Calculate IN/OUT of Each Block
   // ------------------------------
 
+#ifndef ASMJIT_NO_LOGGING
+  uint32_t numVisits = numReachableBlocks;
+#endif
+
   {
     ZoneStack<RABlock*> workList;
     ZoneBitVector workBits;
@@ -921,7 +927,9 @@ ASMJIT_FAVOR_SPEED Error BaseRAPass::buildLiveness() noexcept {
           }
         }
       }
+#ifndef ASMJIT_NO_LOGGING
       numVisits++;
+#endif
     }
 
     workList.reset();

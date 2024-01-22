@@ -139,8 +139,8 @@ struct EmitterExplicitT {
 
   // These two are unfortunately reported by the sanitizer. We know what we do, however, the sanitizer doesn't.
   // I have tried to use reinterpret_cast instead, but that would generate bad code when compiled by MSC.
-  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF inline This* _emitter() noexcept { return static_cast<This*>(this); }
-  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF inline const This* _emitter() const noexcept { return static_cast<const This*>(this); }
+  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG This* _emitter() noexcept { return static_cast<This*>(this); }
+  ASMJIT_ATTRIBUTE_NO_SANITIZE_UNDEF ASMJIT_INLINE_NODEBUG const This* _emitter() const noexcept { return static_cast<const This*>(this); }
 
   //! \endcond
 
@@ -664,7 +664,6 @@ public:
   //! \{
 
   // NOTE: For some reason Doxygen is messed up here and thinks we are in cond.
-  //! \endcond
 
   ASMJIT_INST_2x(in, In, Gp_ZAX, Imm)                                  // ANY
   ASMJIT_INST_2x(in, In, Gp_ZAX, Gp_DX)                                // ANY
@@ -2160,9 +2159,6 @@ public:
 
   //! \name GFNI Instructions
   //! \{
-
-  // NOTE: For some reason Doxygen is messed up here and thinks we are in cond.
-  //! \endcond
 
   ASMJIT_INST_3x(gf2p8affineinvqb, Gf2p8affineinvqb, Xmm, Xmm, Imm)    // GFNI
   ASMJIT_INST_3x(gf2p8affineinvqb, Gf2p8affineinvqb, Xmm, Mem, Imm)    // GFNI
