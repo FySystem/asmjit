@@ -52,7 +52,7 @@
 #endif
 
 #ifdef _KERNEL_MODE
-#include "Common/KSupport.h"
+#include "Util/KSupport.h"
 #endif
 
 // Build Options
